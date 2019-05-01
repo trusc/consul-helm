@@ -14,7 +14,7 @@ metadata:
     release: {{ .Release.Name }}
   annotations:
     "helm.sh/hook": post-install
-    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-weight": "1000"
     "helm.sh/hook-delete-policy": hook-succeeded
 spec:
   template:
@@ -40,11 +40,21 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.server.enterpriseLicense.secretName }}
                   key: {{ .Values.server.enterpriseLicense.secretKey }}
+            {{- if .Values.global.bootstrapACLs }}
+            - name: CONSUL_HTTP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-consul-bootstrap-acl-token
+                  key: token
+            {{- end }}
           command: 
             - "/bin/sh"
             - "-ec"
             - |
               curl -fsSL -X PUT http://{{ template "consul.fullname" . }}-server:8500/v1/operator/license \
+              {{- if .Values.global.bootstrapACLs }}
+                -H "Authorization: Bearer ${CONSUL_HTTP_TOKEN}" \
+              {{- end }}
                 --data ${ENTERPRISE_LICENSE}
 {{- end }}
 {{- end }}
